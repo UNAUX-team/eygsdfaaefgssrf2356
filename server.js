@@ -1,21 +1,51 @@
-let express = require('express')
-let path = require('path')
-let SocketIO = require('socket.io')
+import express from 'express'
+import { createServer } from 'http'
+import path from 'path'
+import { Socket } from 'socket.io'
+import { toBuffer } from 'qrcode'
+import fetch from 'node-fetch'
 
 function connect(conn, PORT) {
     let app = global.app = express()
-    let qr = 'invalid'
-client.baileys.ev.on('connection.update', (conn) => {
-  if (conn.qr) { // if the 'qr' property is available on 'conn'
-    client.logger.info('QR Generated');
-    qr.toFile(resolvePath(__dirname, 'qr.png'), conn.qr); // generate the file
-  } else if (conn.connection && conn.connection === 'close') { // when websocket is closed
-    if (existsSync(resolvePath(__dirname, 'qr.png'))) { // and, the QR file is exists
-      unlinkSync(resolvePath(__dirname, 'qr.png')); // delete it
+    console.log(app)
+    let server = global.server = createServer(app)
+    // app.use(express.static(path.join(__dirname, 'views')))
+    let _qr = 'invalid'
+
+    conn.ev.on('connection.update', function appQR({ qr }) {
+        if (qr) _qr = qr
+    })
+
+    app.use(async (req, res) => {
+        res.setHeader('content-type', 'image/png')
+        res.end(await toBuffer(_qr))
+    })
+
+    // let io = new Socket(server)
+    // io.on('connection', socket => {
+    //     let { unpipeEmit } = pipeEmit(conn, socket, 'conn-')
+    //     socket.on('disconnect', unpipeEmit)
+    // })
+
+    server.listen(PORT, () => {
+        console.log('App listened on port', PORT)
+        if (opts['keepalive']) keepAlive()
+    })
+}
+
+function pipeEmit(event, event2, prefix = '') {
+    let old = event.emit
+    event.emit = function (event, ...args) {
+        old.emit(event, ...args)
+        event2.emit(prefix + event, ...args)
     }
-  }
-});
+    return {
+        unpipeEmit() {
+            event.emit = old
+        }
+    }
+}
 
-let server = app.listen(PORT, () => console.log('App listened on port', PORT))
 
-module.exports = connect
+
+export default connect
